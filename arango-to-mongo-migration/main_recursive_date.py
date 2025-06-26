@@ -9,9 +9,16 @@ import dateutil.parser
 import ijson
 
 # === CONFIGURATION ===
+
 MONGO_CONFIG = mongo_config.get()
+ENV = MONGO_CONFIG['env']
 ARANGO_DUMP_FILE = MONGO_CONFIG['dumpFile']
+TLS = True
 MONGO_URI = f"mongodb+srv://{MONGO_CONFIG['user']}:{MONGO_CONFIG['password']}@{MONGO_CONFIG['host']}/?retryWrites=true&w=majority&appName=au-qa"
+if ENV == 'local':
+    TLS = False
+    MONGO_URI = f"mongodb://{MONGO_CONFIG['user']}:{MONGO_CONFIG['password']}@{MONGO_CONFIG['host']}/?retryWrites=true&w=majority&appName=au-qa"
+
 MONGO_DB = MONGO_CONFIG['dbname']
 MONGO_COLLECTION = MONGO_CONFIG['collection']
 BATCH_SIZE = 100
@@ -19,8 +26,10 @@ MAX_WORKERS = 4
 DATE_FIELDS = ['createdAt', 'updatedAt', 'timestamp', 'createdDt', 'modifiedDt', 'expireAt', 'quoteDate', 'createdDate', 'lastModifiedDate']  # Adjust as needed
 VERSION_REQ = MONGO_CONFIG['versionReq']
 
+EXCLUDE_DAT_FIELD = ['fromDate', 'toDate']
+
 # === SETUP ===
-client = MongoClient(MONGO_URI, tls=True, tlsallowinvalidcertificates=True)
+client = MongoClient(MONGO_URI, tls=TLS, tlsallowinvalidcertificates=True)
 collection = client[MONGO_DB][MONGO_COLLECTION]
 
 # === UTILITIES ===
@@ -39,7 +48,7 @@ def convert_arango_date(value):
     if isinstance(value, str):
         clean_value = value.split('[')[0]
 
-        if len(clean_value) < 12 or clean_value.isdigit():
+        if clean_value.isdigit() or len(clean_value) < 12:
             return value
 
         try:
@@ -47,12 +56,12 @@ def convert_arango_date(value):
             return parsed
         except Exception:
             return value  # Not a valid date string
-    elif isinstance(value, int) and len(str(value)) >= 12:
-        # Heuristic: likely a millisecond timestamp
-        try:
-            return datetime.utcfromtimestamp(value / 1000.0)
-        except Exception:
-            return value
+    # elif isinstance(value, int) and len(str(value)) >= 12:
+    #     # Heuristic: likely a millisecond timestamp
+    #     try:
+    #         return datetime.utcfromtimestamp(value / 1000.0)
+    #     except Exception:
+    #         return value
     return value
 
 def process_dates(obj):

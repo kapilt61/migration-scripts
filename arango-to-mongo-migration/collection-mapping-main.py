@@ -11,7 +11,9 @@ from config.mongo_config import MongoConfig as mongo_config
 MONGO_CONFIG = mongo_config.get()
 ARANGO_DUMP_FILE = MONGO_CONFIG['dumpFile']
 ARANGO_MAPPING_DUMP_FILE = MONGO_CONFIG['mappingDumpFile']
-MONGO_URI = f"mongodb+srv://{MONGO_CONFIG['user']}:{MONGO_CONFIG['password']}@{MONGO_CONFIG['host']}/?retryWrites=true&w=majority"
+#MONGO_URI = f"mongodb+srv://{MONGO_CONFIG['user']}:{MONGO_CONFIG['password']}@{MONGO_CONFIG['host']}/?retryWrites=true&w=majority"
+MONGO_URI = f"mongodb://{MONGO_CONFIG['user']}:{MONGO_CONFIG['password']}@{MONGO_CONFIG['host']}/?retryWrites=true&w=majority"
+
 MONGO_DB = MONGO_CONFIG['dbname']
 MONGO_COLLECTION = MONGO_CONFIG['collection']
 MONGO_MAPPING_COLLECTION = MONGO_CONFIG['mappingCollection']
@@ -21,7 +23,7 @@ DATE_FIELDS = ['createdAt', 'updatedAt', 'timestamp', 'createdDt', 'modifiedDt',
 VERSION_REQ = MONGO_CONFIG['versionReq']
 
 # === SETUP ===
-client = MongoClient(MONGO_URI, tls=True, tlsallowinvalidcertificates=True)
+client = MongoClient(MONGO_URI, tls=False, tlsallowinvalidcertificates=True)
 collection = client[MONGO_DB][MONGO_COLLECTION]
 
 
@@ -128,6 +130,7 @@ for old_id, new_id in zip(old_to_data.keys(), result.inserted_ids):
 data_log_docs = []
 mappingKeyType = MONGO_CONFIG['mappingKeyType']
 mappingKey = MONGO_CONFIG['mappingKey']
+extraInternalMappingId = MONGO_CONFIG['extraInternalMappingId']
 for log in data_logs:
 
     if mappingKeyType == 'object':
@@ -138,6 +141,7 @@ for log in data_logs:
         if old_data_id in id_map:
             old_data[mappingKeyId] = id_map[old_data_id]
             log[mappingKey] = old_data
+            log[extraInternalMappingId] = old_data_id
             log = clean_and_prepare(log, False)
             data_log_docs.append(log)
 
